@@ -1,0 +1,1 @@
+python eval_on_hf_dataset.py --model_id CLEAR-Global/w2v-bert-2.0-hausa_579_993h_yourtts --dataset mozilla-foundation/common_voice_17_0 --name ha --chars_to_ignore "\!\,\.\:\;\?" --whitespace_chars "-" --text_column_name sentence --class_column_name gender
