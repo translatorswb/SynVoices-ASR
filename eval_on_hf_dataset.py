@@ -6,6 +6,7 @@ from datasets import load_dataset, load_from_disk, Audio
 from transformers import pipeline, AutoFeatureExtractor
 import pandas as pd
 import re
+from cvutils import Validator
 
 wer_metric = evaluate.load("wer")
 cer_metric = evaluate.load("cer")
@@ -36,6 +37,18 @@ def main(args):
 
     # load eval pipeline
     asr = pipeline("automatic-speech-recognition", model=model_id, device=device)
+
+    # normalize the text if using Common Voice Utils
+    def normalize_text(text, validator):
+        validated_text = validator.validate(text)
+        if validated_text is None:
+            print(f"Cannot validate text: {text}, returning original text.")
+            return {text_column_name: text}
+        return {text_column_name: validated_text}
+
+    if args.cv_utils_normalize_code is not None:
+        validator = Validator(args.cv_utils_normalize_code)
+        dataset = dataset.map(normalize_text, fn_kwargs={"validator": validator}, input_columns=[text_column_name])
 
     # lowercase the text
     def lowercase(batch):
@@ -88,6 +101,10 @@ def main(args):
         # run inference
         prediction = asr(item["audio"]["array"])
         pred_text = prediction["text"]
+
+        # normalize the predicted transcript if using Common Voice Utils
+        if args.cv_utils_normalize_code is not None:
+            pred_text = normalize_text(pred_text, validator)[text_column_name]
 
         # remove unwanted characters from the predicted transcript
         if args.chars_to_ignore is not None:
@@ -194,6 +211,13 @@ if __name__ == "__main__":
         required=False,
         default=None,
         help="Name of the column containing the class you'd like to calculate the metrics for. This could be 'gender', 'age', etc.",
+    )
+    parser.add_argument(
+        "--cv_utils_normalize_code",
+        type=str,
+        required=False,
+        default=None,
+        help="Language code for Common Voice Utils normalization. If not provided, reference transcripts will only be lowercased.",
     )
     parser.add_argument(
         "--chars_to_ignore",

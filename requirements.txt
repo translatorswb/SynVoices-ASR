@@ -5,3 +5,4 @@ librosa
 jiwer
 evaluate
 tensorboard
+git+https://github.com/ftyers/commonvoice-utils.git
